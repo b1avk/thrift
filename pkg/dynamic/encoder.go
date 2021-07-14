@@ -78,7 +78,10 @@ func InternalEncoderOf(v reflect.Type) (e InternalEncoder) {
 			e = new(binaryEncoder)
 		} else {
 			// TODO set encoder
-			e = &listEncoder{v, InternalEncoderOf(v.Elem())}
+			e = &listEncoder{
+				sliceType:      v,
+				elementEncoder: InternalEncoderOf(v.Elem()),
+			}
 		}
 	default:
 		panic(fmt.Errorf("unexpected Type: %v", v.Kind()))
@@ -370,7 +373,11 @@ type listEncoder struct {
 
 func (e *listEncoder) Encode(v reflect.Value, p thrift.TProtocol) (err error) {
 	l := v.Len()
-	if err = p.WriteListBegin(thrift.TListHeader{Element: e.elementEncoder.Kind(), Size: l}); err == nil {
+	h := thrift.TListHeader{
+		Element: e.elementEncoder.Kind(),
+		Size:    l,
+	}
+	if err = p.WriteListBegin(h); err == nil {
 		for i := 0; i < l; i++ {
 			if err = e.elementEncoder.Encode(v.Index(i), p); err != nil {
 				return
@@ -400,6 +407,7 @@ func (e *listEncoder) Decode(v reflect.Value, p thrift.TProtocol) (err error) {
 				}
 			}
 		}
+		err = p.ReadListEnd()
 	}
 	return
 }
