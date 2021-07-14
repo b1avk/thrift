@@ -78,7 +78,6 @@ func internalEncoderOf(v reflect.Type, f *fieldTag) (e InternalEncoder) {
 		if v.Elem().Kind() == reflect.Uint8 {
 			e = new(binaryEncoder)
 		} else {
-			// TODO set encoder
 			if f == nil || f.nextIsList() {
 				e = &listEncoder{
 					sliceType:      v,
@@ -92,10 +91,10 @@ func internalEncoderOf(v reflect.Type, f *fieldTag) (e InternalEncoder) {
 			}
 		}
 	case reflect.Ptr:
-		valueTpye := v.Elem()
+		valueType := v.Elem()
 		e = &ptrEncoder{
-			valueType:       valueTpye,
-			InternalEncoder: internalEncoderOf(valueTpye, f),
+			valueType:       valueType,
+			InternalEncoder: internalEncoderOf(valueType, f),
 		}
 	default:
 		panic(fmt.Errorf("unexpected Type: %v", v.Kind()))
