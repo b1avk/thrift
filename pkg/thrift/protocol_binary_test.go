@@ -11,8 +11,8 @@ func TestTBinaryProtocolMessageHeader(t *testing.T) {
 		StrictWrite: true,
 		StrictRead:  true,
 	})
-	if p.WriteMessageBegin(thrift.TMessageHeader{}) != nil {
-		t.Fatal("fail to write message header")
+	if err := p.WriteMessageBegin(thrift.TMessageHeader{}); err != nil {
+		t.Fatal("fail to write message header", err)
 	}
 	if _, err := p.ReadMessageBegin(); err != nil {
 		t.Fatal("fail to read message header", err)
