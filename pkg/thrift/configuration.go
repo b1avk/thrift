@@ -1,5 +1,9 @@
 package thrift
 
+import (
+	"fmt"
+)
+
 const (
 	DefaultMaxBufferSize  = 1024
 	DefaultMaxMessageSize = 8192
@@ -43,6 +47,16 @@ func (cfg *TConfiguration) GetMaxBufferSize() int {
 		cfg.MaxBufferSize = DefaultMaxBufferSize
 	}
 	return cfg.MaxBufferSize
+}
+
+func (cfg *TConfiguration) CheckSizeForProtocol(size int) error {
+	if size < 0 {
+		return NewTProtocolException(TProtocolErrorNegativeSize, fmt.Sprintf("negative size: %d", size))
+	}
+	if size > cfg.GetMaxMessageSize() {
+		return NewTProtocolException(TProtocolErrorSizeLimit, fmt.Sprintf("size exceeded max allowed: %d", size))
+	}
+	return nil
 }
 
 func (cfg *TConfiguration) Propagate(impls ...interface{}) {

@@ -9,6 +9,8 @@ type TProtocolError byte
 const (
 	TProtocolErrorUnknown TProtocolError = iota
 	TProtocolErrorInvalidData
+	TProtocolErrorNegativeSize
+	TProtocolErrorSizeLimit
 	TProtocolErrorBadVersion
 )
 
