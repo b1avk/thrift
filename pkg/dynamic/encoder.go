@@ -3,6 +3,9 @@ package dynamic
 import (
 	"fmt"
 	"reflect"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -63,6 +66,8 @@ func InternalEncoderOf(v reflect.Type) (e InternalEncoder) {
 		e = new(intEncoder)
 	case reflect.String:
 		e = new(stringEncoder)
+	case reflect.Struct:
+		e = newStructEncoder(v)
 	case reflect.Map:
 		e = newMapEncoder(v)
 	case reflect.Slice:
@@ -300,6 +305,128 @@ func (e *binaryEncoder) Decode(v reflect.Value, p thrift.TProtocol) error {
 
 func (e *binaryEncoder) Kind() thrift.TType {
 	return thrift.STRING
+}
+
+type fieldTag struct {
+	identity int
+	contains []string
+	optional bool
+}
+
+func parseFieldTag(tag string) (f fieldTag, err error) {
+	splited := strings.Split(tag, ",")
+	f.identity, err = strconv.Atoi(splited[0])
+	f.contains = splited[1:]
+	f.optional = f.contain("optional")
+	sort.Strings(f.contains)
+	return
+}
+
+func (t fieldTag) contain(s string) bool {
+	i := sort.SearchStrings(t.contains, s)
+	return i < len(t.contains) && t.contains[i] == s
+}
+
+type fieldEncoder struct {
+	header *thrift.TFieldHeader
+	tag    *fieldTag
+	InternalEncoder
+}
+
+type structEncoder struct {
+	fieldEncoderByIndex  map[int]fieldEncoder
+	fieldIndexByIdentity map[int16]int
+}
+
+func newStructEncoder(v reflect.Type) *structEncoder {
+	e := &structEncoder{
+		fieldEncoderByIndex:  make(map[int]fieldEncoder),
+		fieldIndexByIdentity: make(map[int16]int),
+	}
+	n := v.NumField()
+	for i := 0; i < n; i++ {
+		f := v.Field(i)
+		if t, err := parseFieldTag(f.Tag.Get("thrift")); err == nil {
+			fh := &thrift.TFieldHeader{
+				Name:     f.Name,
+				Identity: int16(t.identity),
+			}
+			fe := fieldEncoder{
+				header:          fh,
+				tag:             &t,
+				InternalEncoder: InternalEncoderOf(f.Type),
+			}
+			fh.Type = fe.Kind()
+			if _, ok := e.fieldIndexByIdentity[fh.Identity]; ok {
+				panic(fmt.Errorf("field %v already defined", fh.Identity))
+			}
+			e.fieldEncoderByIndex[i] = fe
+			e.fieldIndexByIdentity[fh.Identity] = i
+		}
+	}
+	return e
+}
+
+func (e *structEncoder) Encode(v reflect.Value, p thrift.TProtocol) (err error) {
+	if err = p.WriteStructBegin(thrift.TStructHeader{}); err == nil {
+		for i, fe := range e.fieldEncoderByIndex {
+			f := v.Field(i)
+			if fe.tag.optional && f.IsZero() {
+				continue
+			} else {
+				if err = p.WriteFieldBegin(*fe.header); err != nil {
+					return
+				}
+				if err = fe.Encode(f, p); err != nil {
+					return
+				}
+			}
+			if err = p.WriteFieldEnd(); err != nil {
+				return
+			}
+		}
+		if err = p.WriteFieldStop(); err == nil {
+			err = p.WriteStructEnd()
+		}
+	}
+	return
+}
+
+func (e *structEncoder) Decode(v reflect.Value, p thrift.TProtocol) (err error) {
+	if _, err = p.ReadStructBegin(); err == nil {
+		var h thrift.TFieldHeader
+		for {
+			if h, err = p.ReadFieldBegin(); err != nil {
+				return
+			}
+			if h.Type == thrift.STOP {
+				break
+			}
+			if i, ok := e.fieldIndexByIdentity[h.Identity]; ok {
+				if f, ok := e.fieldEncoderByIndex[i]; ok && f.header.Type == h.Type {
+					if err = f.Decode(v.Field(i), p); err != nil {
+						return
+					}
+					if err = p.ReadFieldEnd(); err != nil {
+						return
+					}
+					continue
+				}
+			}
+			if err = p.Skip(h.Type); err != nil {
+				return
+			}
+			if err = p.ReadFieldEnd(); err != nil {
+				return
+			}
+		}
+		err = p.ReadFieldEnd()
+	}
+	return
+}
+
+func (e *structEncoder) Kind() thrift.TType {
+	return thrift.STRUCT
 }
 
 type mapEncoder struct {

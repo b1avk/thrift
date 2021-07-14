@@ -1,6 +1,7 @@
 package dynamic_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -98,6 +99,23 @@ var BasicTestCases = []BasicTestCase{
 		name:  "StringPtr",
 		value: toPTR("Hello World").(*string),
 	},
+	{
+		name: "Struct",
+		value: BasicStruct{
+			BooleanTrue:  true,
+			BooleanFalse: false,
+			Double:       0.123,
+			String:       "Hello Mars",
+		},
+	},
+}
+
+type BasicStruct struct {
+	BooleanTrue  bool    `thrift:"0"`
+	BooleanFalse bool    `thrift:"1"`
+	OptionaBool  bool    `thrift:"2,optional"`
+	Double       float64 `thrift:"3"`
+	String       string  `thrift:"4"`
 }
 
 func testBasicValue(t *testing.T, p thrift.TProtocol) {
@@ -114,6 +132,7 @@ func testBasicValue(t *testing.T, p thrift.TProtocol) {
 			}
 			r := rv.Elem().Interface()
 			if !reflect.DeepEqual(c.value, r) {
+				fmt.Println(c.value, r)
 				t.Fatal("value obtained for encode and decode mismatch")
 			}
 		})
