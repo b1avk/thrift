@@ -88,8 +88,7 @@ var SimpleTestCases = []SimpleTestCase{
 	},
 }
 
-func TestBasicValue(t *testing.T) {
-	p := thrift.NewTBinaryProtocol(thrift.NewTMemoryBuffer())
+func testBasicValue(t *testing.T, p thrift.TProtocol) {
 	for _, c := range SimpleTestCases {
 		t.Run(c.name, func(t *testing.T) {
 			vt := reflect.TypeOf(c.value)
@@ -107,4 +106,8 @@ func TestBasicValue(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBasicValueBinaryProtocol(t *testing.T) {
+	testBasicValue(t, thrift.NewTBinaryProtocol(thrift.NewTMemoryBuffer()))
 }
