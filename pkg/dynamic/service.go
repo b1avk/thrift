@@ -30,7 +30,7 @@ func parseDynamicField(t reflect.StructField) (f dynamicField, err error) {
 	var id int
 	for i := 0; i < ni; i++ {
 		ti := ft.In(i)
-		if i == 0 || ti.AssignableTo(contextType) {
+		if i == 0 && ti.AssignableTo(contextType) {
 			f.hasContext = true
 			continue
 		}
@@ -74,6 +74,10 @@ func parseDynamicField(t reflect.StructField) (f dynamicField, err error) {
 func (f dynamicField) NewArgs(args []reflect.Value) *TStruct {
 	v := f.args.Copy()
 	v.New()
+	for i := range f.args.encoder.fieldEncoderByIndex {
+		v.value.Field(i).Set(args[0])
+		args = args[1:]
+	}
 	return v
 }
 
