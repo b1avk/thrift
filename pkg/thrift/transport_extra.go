@@ -10,7 +10,8 @@ type TExtraTransport interface {
 	io.ByteWriter
 }
 
-func NewTExtraTransport(t TTransport) TExtraTransport {
+func NewTExtraTransport(t TTransport, cfg *TConfiguration) TExtraTransport {
+	cfg.Propagate(t)
 	if t, ok := t.(TExtraTransport); ok {
 		return t
 	}
@@ -31,4 +32,8 @@ func (t *tExtraTransport) WriteByte(b byte) error {
 func (t *tExtraTransport) ReadByte() (byte, error) {
 	_, err := t.Read(t.cache[:])
 	return t.cache[0], NewTTransportExceptionFromError(err)
+}
+
+func (t *tExtraTransport) SetTConfiguration(cfg *TConfiguration) {
+	cfg.Propagate(t.TTransport)
 }

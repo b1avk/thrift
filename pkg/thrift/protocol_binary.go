@@ -6,13 +6,21 @@ import (
 	"math"
 )
 
-func NewTBinaryProtocol(t TTransport) TProtocol {
-	return &tBinaryProtocol{TExtraTransport: NewTExtraTransport(t)}
+func NewTBinaryProtocol(t TTransport, cfg *TConfiguration) TProtocol {
+	p := &tBinaryProtocol{cfg: cfg.NonNil()}
+	p.TExtraTransport = NewTExtraTransport(t, p.cfg)
+	return p
 }
 
 type tBinaryProtocol struct {
 	TExtraTransport
+	cfg *TConfiguration
 	buf [8]byte
+}
+
+func (p *tBinaryProtocol) SetTConfiguration(cfg *TConfiguration) {
+	p.cfg = cfg.NonNil()
+	p.cfg.Propagate(p.TExtraTransport)
 }
 
 func (p *tBinaryProtocol) WriteMessageBegin(h TMessageHeader) (err error) {

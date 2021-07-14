@@ -11,6 +11,10 @@ type TConfiguration struct {
 	MaxBufferSize           int
 }
 
+type TConfigurationSetter interface {
+	SetTConfiguration(cfg *TConfiguration)
+}
+
 var DefaultTConfiguration = &TConfiguration{
 	StrictWrite:    true,
 	MaxBufferSize:  DefaultMaxBufferSize,
@@ -39,6 +43,15 @@ func (cfg *TConfiguration) GetMaxBufferSize() int {
 		cfg.MaxBufferSize = DefaultMaxBufferSize
 	}
 	return cfg.MaxBufferSize
+}
+
+func (cfg *TConfiguration) Propagate(impls ...interface{}) {
+	cfg = cfg.NonNil()
+	for _, impl := range impls {
+		if setter, ok := impl.(TConfigurationSetter); ok {
+			setter.SetTConfiguration(cfg)
+		}
+	}
 }
 
 func (cfg *TConfiguration) NonNil() *TConfiguration {
