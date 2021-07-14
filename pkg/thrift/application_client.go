@@ -15,6 +15,16 @@ type TStandardClient struct {
 }
 
 func NewTStandardClient(iprot, oprot TProtocol) *TStandardClient {
+	if iprot == nil || oprot == nil {
+		switch {
+		case iprot == nil:
+			iprot = oprot
+		case oprot == nil:
+			oprot = iprot
+		default:
+			panic("thrift.NewTStandardClient: iprot or oprot must be non-nil")
+		}
+	}
 	return &TStandardClient{
 		iprot: iprot,
 		oprot: oprot,
