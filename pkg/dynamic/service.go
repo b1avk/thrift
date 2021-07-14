@@ -88,7 +88,7 @@ func (f dynamicField) ReturnResult(res *TStruct, err error) (results []reflect.V
 		}
 	}
 	if f.returnError {
-		results = append(results, reflect.ValueOf(err))
+		results = append(results, reflect.ValueOf(&err).Elem())
 	}
 	return
 }
