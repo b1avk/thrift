@@ -236,7 +236,7 @@ func (p *tCompactProtocol) ReadU16() (uint16, error) {
 }
 
 func (p *tCompactProtocol) ReadI16() (int16, error) {
-	v, err := p.ReadU64()
+	v, err := p.ReadI64()
 	return int16(v), err
 }
 
@@ -246,7 +246,7 @@ func (p *tCompactProtocol) ReadU32() (uint32, error) {
 }
 
 func (p *tCompactProtocol) ReadI32() (int32, error) {
-	v, err := p.ReadU64()
+	v, err := p.ReadI64()
 	return int32(v), err
 }
 
@@ -286,7 +286,7 @@ func (p *tCompactProtocol) Read(v []byte) (int, error) {
 }
 
 func (p *tCompactProtocol) readSize() (int, error) {
-	v, err := p.ReadU32()
+	v, err := p.ReadI32()
 	return int(v), err
 }
 
