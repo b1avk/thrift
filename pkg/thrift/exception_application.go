@@ -26,9 +26,7 @@ func (e *TApplicationException) Error() string {
 }
 
 func (e *TApplicationException) Write(p TProtocol) (err error) {
-	if err = p.WriteStructBegin(TStructHeader{
-		Name: "TApplicationException",
-	}); err != nil {
+	if err = p.WriteStructBegin(TStructHeader{"TApplicationException"}); err != nil {
 		return
 	}
 	if len(e.Message) > 0 {
