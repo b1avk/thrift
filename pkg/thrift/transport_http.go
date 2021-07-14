@@ -13,6 +13,7 @@ import (
 // THttpClientOptions an optional configurations for THttpClient.
 type THttpClientOptions struct {
 	Client *http.Client
+	Header http.Header
 }
 
 // THttpClientFactory a factory of THttpClient.
@@ -33,9 +34,15 @@ type THttpClient struct {
 	cache [1]byte
 }
 
+func NewDefaultTHttpClientOptions() THttpClientOptions {
+	return THttpClientOptions{
+		Header: map[string][]string{"Content-Type": {"application/x-thrift"}},
+	}
+}
+
 // NewTHttpClientFactory returns new THttpClientFactory.
 func NewTHttpClientFactory(urlstr string) *THttpClientFactory {
-	return NewTHttpClientFactoryWithOptions(urlstr, THttpClientOptions{})
+	return NewTHttpClientFactoryWithOptions(urlstr, NewDefaultTHttpClientOptions())
 }
 
 // NewTHttpClientFactoryWithOptions returns new THttpClientFactory with options.
@@ -53,7 +60,7 @@ func (f *THttpClientFactory) GetTransport(t TTransport) (TTransport, error) {
 
 // NewTHttpClient returns new THttpClient.
 func NewTHttpClient(urlstr string) (*THttpClient, error) {
-	return NewTHttpClientWithOptions(urlstr, THttpClientOptions{})
+	return NewTHttpClientWithOptions(urlstr, NewDefaultTHttpClientOptions())
 }
 
 // NewTHttpClientWithOptions returns new THttpClient with options.
@@ -69,7 +76,7 @@ func NewTHttpClientWithOptions(urlstr string, options THttpClientOptions) (*THtt
 	return &THttpClient{
 		client:  client,
 		url:     parsedURL,
-		header:  map[string][]string{"Content-Type": {"application/x-thrift"}},
+		header:  options.Header,
 		request: bytes.NewBuffer(make([]byte, 0, 1024)),
 	}, nil
 }
