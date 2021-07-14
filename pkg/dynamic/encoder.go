@@ -386,6 +386,8 @@ func newStructEncoder(v reflect.Type) *structEncoder {
 		fieldEncoderByIndex:  make(map[int]fieldEncoder),
 		fieldIndexByIdentity: make(map[int16]int),
 	}
+	// prevent recursion on nested struct
+	cache.Store(v, e)
 	n := v.NumField()
 	for i := 0; i < n; i++ {
 		f := v.Field(i)
@@ -425,6 +427,9 @@ func (e *structEncoder) Encode(v reflect.Value, p thrift.TProtocol) (err error) 
 			if fe.tag.optional && f.IsZero() {
 				continue
 			} else {
+				if (f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr) && f.IsNil() {
+					continue
+				}
 				if err = p.WriteFieldBegin(*fe.header); err != nil {
 					return
 				}
