@@ -93,3 +93,61 @@ func (p *TStandardClient) Call(ctx context.Context, method string, args, result 
 	}
 	return
 }
+
+type TPoolClient struct {
+	itrans, otrans TTransportFactory
+	iprot, oprot   TProtocolFactory
+	sequence       int32
+	mutex          sync.Mutex
+	pool           sync.Pool
+}
+
+func NewTPoolClient(itrans, otrans TTransportFactory, iprot, oprot TProtocolFactory) *TPoolClient {
+	if itrans == nil || otrans == nil {
+		switch {
+		case itrans == nil:
+			itrans = otrans
+		case oprot == nil:
+			otrans = itrans
+		default:
+			panic("thrift.NewTPoolClient: itrans or otrans must be non-nil")
+		}
+	}
+	if iprot == nil || oprot == nil {
+		switch {
+		case iprot == nil:
+			iprot = oprot
+		case oprot == nil:
+			oprot = iprot
+		default:
+			panic("thrift.NewTPoolClient: iprot or oprot must be non-nil")
+		}
+	}
+	return &TPoolClient{
+		itrans: itrans,
+		otrans: otrans,
+		iprot:  iprot,
+		oprot:  oprot,
+	}
+}
+
+func (cp *TPoolClient) Call(ctx context.Context, method string, args, result TStruct) error {
+	cp.mutex.Lock()
+	cp.sequence++
+	cp.mutex.Unlock()
+	c, ok := cp.pool.Get().(*TStandardClient)
+	if !ok {
+		itrans, err := cp.itrans.GetTransport(nil)
+		if err != nil {
+			return err
+		}
+		otrans, err := cp.otrans.GetTransport(nil)
+		if err != nil {
+			return err
+		}
+		c = NewTStandardClient(cp.iprot.GetProtocol(itrans), cp.oprot.GetProtocol(otrans))
+	}
+	defer cp.pool.Put(c)
+	c.message.Identity = cp.sequence
+	return c.Call(ctx, method, args, result)
+}
