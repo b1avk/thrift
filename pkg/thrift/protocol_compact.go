@@ -18,6 +18,15 @@ func NewTCompactProtocol(t TTransport, cfg *TConfiguration) TProtocol {
 	return p
 }
 
+const (
+	compactProtocolID      = 0x82
+	compactVersion         = 1
+	compactVersionMask     = 0x1f
+	compactTypeMask        = 0xe0
+	compactTypeBits        = 0x07
+	compactTypeShiftAmount = 5
+)
+
 type tCompactProtocol struct {
 	TExtraTransport
 	cfg *TConfiguration
@@ -25,7 +34,13 @@ type tCompactProtocol struct {
 }
 
 func (p *tCompactProtocol) WriteMessageBegin(h TMessageHeader) (err error) {
-	// TODO
+	if err = p.WriteByte(compactProtocolID); err == nil {
+		if err = p.WriteByte(compactVersion | (h.Type << compactTypeShiftAmount)); err == nil {
+			if err = p.WriteI32(h.Identity); err == nil {
+				err = p.WriteString(h.Name)
+			}
+		}
+	}
 	return
 }
 
@@ -154,7 +169,25 @@ func (p *tCompactProtocol) writeSize(v int) error {
 }
 
 func (p *tCompactProtocol) ReadMessageBegin() (h TMessageHeader, err error) {
-	// TODO
+	var b byte
+	if b, err = p.ReadByte(); err != nil {
+		return
+	}
+	if b != compactProtocolID {
+		err = NewTProtocolException(TProtocolErrorBadVersion, "bad protocol id in message header")
+		return
+	}
+	if b, err = p.ReadByte(); err != nil {
+		return
+	}
+	if (b & compactVersionMask) != compactVersion {
+		err = NewTProtocolException(TProtocolErrorBadVersion, "bad version in message header")
+		return
+	}
+	h.Type = (b >> compactTypeShiftAmount) & compactTypeBits
+	if h.Identity, err = p.ReadI32(); err == nil {
+		h.Name, err = p.ReadString()
+	}
 	return
 }
 
