@@ -12,6 +12,12 @@ func NewTBinaryProtocol(t TTransport, cfg *TConfiguration) TProtocol {
 	return p
 }
 
+const (
+	binaryVersionMask = 0xffff0000
+	binaryVersion1    = 0x80010000
+	binaryTypeMask    = 0x000000ff
+)
+
 type tBinaryProtocol struct {
 	TExtraTransport
 	cfg *TConfiguration
@@ -24,7 +30,19 @@ func (p *tBinaryProtocol) SetTConfiguration(cfg *TConfiguration) {
 }
 
 func (p *tBinaryProtocol) WriteMessageBegin(h TMessageHeader) (err error) {
-	// TODO implement.
+	if p.cfg.IsStrictWrite() {
+		if err = p.WriteU32(binaryVersion1 | uint32(h.Type)); err == nil {
+			if err = p.WriteString(h.Name); err == nil {
+				err = p.WriteI32(h.Identity)
+			}
+		}
+	} else {
+		if err = p.WriteString(h.Name); err == nil {
+			if err = p.WriteByte(h.Type); err == nil {
+				err = p.WriteI32(h.Identity)
+			}
+		}
+	}
 	return
 }
 
@@ -159,7 +177,28 @@ func (p *tBinaryProtocol) writeSize(v int) error {
 }
 
 func (p *tBinaryProtocol) ReadMessageBegin() (h TMessageHeader, err error) {
-	// TODO implement
+	var n int
+	if n, err = p.readSize(); err != nil {
+		return
+	}
+	if n < 0 {
+		if int64(n)&binaryVersionMask != binaryVersion1 {
+			err = NewTProtocolException(TProtocolErrorBadVersion, "bad version in message header")
+		} else {
+			h.Type = byte(n & binaryTypeMask)
+			if h.Name, err = p.ReadString(); err == nil {
+				h.Identity, err = p.ReadI32()
+			}
+		}
+	} else if p.cfg.IsStrictRead() {
+		err = NewTProtocolException(TProtocolErrorBadVersion, "missing version in message header")
+	} else {
+		if h.Name, err = p.ReadString(); err == nil {
+			if h.Type, err = p.ReadByte(); err == nil {
+				h.Identity, err = p.ReadI32()
+			}
+		}
+	}
 	return
 }
 
