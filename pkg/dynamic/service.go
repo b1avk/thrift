@@ -43,7 +43,6 @@ func parseDynamicField(t reflect.StructField) (f dynamicField, err error) {
 			Tag:  reflect.StructTag(fmt.Sprintf(`thrift:"%v"`, id)),
 		})
 	}
-	fmt.Println(si)
 	if len(si) != 0 {
 		f.args = NewTStruct(reflect.StructOf(si))
 	}
