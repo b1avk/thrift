@@ -3,6 +3,7 @@ package thrift
 import (
 	"context"
 	"fmt"
+	"sync"
 )
 
 type TClient interface {
@@ -12,6 +13,7 @@ type TClient interface {
 type TStandardClient struct {
 	iprot, oprot TProtocol
 	message      TMessageHeader
+	mutex        sync.Mutex
 }
 
 func NewTStandardClient(iprot, oprot TProtocol) *TStandardClient {
@@ -35,7 +37,10 @@ func NewTStandardClient(iprot, oprot TProtocol) *TStandardClient {
 }
 
 func (p *TStandardClient) Call(ctx context.Context, method string, args, result TStruct) (err error) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 	p.message.Identity++
+	p.message.Name = method
 	if err = p.oprot.WriteMessageBegin(p.message); err != nil {
 		return
 	}
