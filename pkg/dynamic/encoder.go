@@ -280,6 +280,7 @@ func (e *intEncoder) Kind() thrift.TType {
 type stringEncoder struct{}
 
 func (e *stringEncoder) Encode(v reflect.Value, p thrift.TProtocol) error {
+	mustBe(v, reflect.String)
 	return p.WriteString(v.String())
 }
 
