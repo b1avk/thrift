@@ -106,6 +106,15 @@ var BasicTestCases = []BasicTestCase{
 			Double:       0.123,
 			String:       "Hello Mars",
 			Enum:         BasicEnum(123),
+			Nested: &BasicStruct{
+				BooleanTrue:  true,
+				BooleanFalse: false,
+				Double:       0.321,
+				String:       "Hello World",
+				Nested: &BasicStruct{
+					Enum: BasicEnum(321),
+				},
+			},
 		},
 	},
 }
@@ -113,13 +122,14 @@ var BasicTestCases = []BasicTestCase{
 type BasicEnum int32
 
 type BasicStruct struct {
-	BooleanTrue  bool      `thrift:"0"`
-	BooleanFalse bool      `thrift:"1"`
-	OptionaBool  bool      `thrift:"2,optional"`
-	Double       float64   `thrift:"3"`
-	String       string    `thrift:"4"`
-	Set          []string  `thrift:"6,optional,set"`
-	Enum         BasicEnum `thrift:"7"`
+	BooleanTrue  bool         `thrift:"0"`
+	BooleanFalse bool         `thrift:"1"`
+	OptionaBool  bool         `thrift:"2,optional"`
+	Double       float64      `thrift:"3"`
+	String       string       `thrift:"4"`
+	Set          []string     `thrift:"6,optional,set"`
+	Enum         BasicEnum    `thrift:"7"`
+	Nested       *BasicStruct `thrift:"8"`
 }
 
 type GetProtocol func() thrift.TProtocol
