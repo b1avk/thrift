@@ -31,6 +31,14 @@ var SimpleTestCases = []SimpleTestCase{
 		value: int8(-128),
 	},
 	{
+		name:  "Float32",
+		value: float32(0.123),
+	},
+	{
+		name:  "Float64",
+		value: float64(0.321),
+	},
+	{
 		name:  "Uint16",
 		value: uint16(255),
 	},
