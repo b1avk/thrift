@@ -40,6 +40,10 @@ type InternalEncoder interface {
 }
 
 func InternalEncoderOf(v reflect.Type) (e InternalEncoder) {
+	return internalEncoderOf(v, nil)
+}
+
+func internalEncoderOf(v reflect.Type, f *fieldTag) (e InternalEncoder) {
 	if e := getValueEncoderOf(v); e != nil {
 		return e.InternalEncoder
 	}
@@ -75,16 +79,23 @@ func InternalEncoderOf(v reflect.Type) (e InternalEncoder) {
 			e = new(binaryEncoder)
 		} else {
 			// TODO set encoder
-			e = &listEncoder{
-				sliceType:      v,
-				elementEncoder: InternalEncoderOf(v.Elem()),
+			if f == nil || f.nextIsList() {
+				e = &listEncoder{
+					sliceType:      v,
+					elementEncoder: internalEncoderOf(v.Elem(), f),
+				}
+			} else {
+				e = &setEncoder{
+					sliceType:      v,
+					elementEncoder: internalEncoderOf(v.Elem(), f),
+				}
 			}
 		}
 	case reflect.Ptr:
 		valueTpye := v.Elem()
 		e = &ptrEncoder{
 			valueType:       valueTpye,
-			InternalEncoder: InternalEncoderOf(valueTpye),
+			InternalEncoder: internalEncoderOf(valueTpye, f),
 		}
 	default:
 		panic(fmt.Errorf("unexpected Type: %v", v.Kind()))
@@ -308,17 +319,25 @@ func (e *binaryEncoder) Kind() thrift.TType {
 }
 
 type fieldTag struct {
-	identity int
-	contains []string
-	optional bool
+	identity      int
+	contains      []string
+	nextList      []bool
+	nextListIndex int
+	optional      bool
 }
 
 func parseFieldTag(tag string) (f fieldTag, err error) {
 	splited := strings.Split(tag, ",")
 	f.identity, err = strconv.Atoi(splited[0])
 	f.contains = splited[1:]
-	f.optional = f.contain("optional")
+	l := len(f.contains)
+	for i := 0; i < l; i++ {
+		if f.contains[i] == "list" || f.contains[i] == "set" {
+			f.nextList = append(f.nextList, f.contains[i] == "list")
+		}
+	}
 	sort.Strings(f.contains)
+	f.optional = f.contain("optional")
 	return
 }
 
@@ -327,10 +346,23 @@ func (t fieldTag) contain(s string) bool {
 	return i < len(t.contains) && t.contains[i] == s
 }
 
+func (t *fieldTag) nextIsList() bool {
+	index := t.nextListIndex
+	if index < len(t.nextList) {
+		t.nextListIndex++
+		return t.nextList[index]
+	}
+	return false
+}
+
 type fieldEncoder struct {
 	header *thrift.TFieldHeader
 	tag    *fieldTag
 	InternalEncoder
+}
+
+func (e *fieldEncoder) Header() thrift.TFieldHeader {
+	return *e.header
 }
 
 type structEncoder struct {
@@ -354,7 +386,7 @@ func newStructEncoder(v reflect.Type) *structEncoder {
 			fe := fieldEncoder{
 				header:          fh,
 				tag:             &t,
-				InternalEncoder: InternalEncoderOf(f.Type),
+				InternalEncoder: internalEncoderOf(f.Type, &t),
 			}
 			fh.Type = fe.Kind()
 			if _, ok := e.fieldIndexByIdentity[fh.Identity]; ok {
@@ -365,6 +397,14 @@ func newStructEncoder(v reflect.Type) *structEncoder {
 		}
 	}
 	return e
+}
+
+func (e *structEncoder) FieldHeader() map[int]thrift.TFieldHeader {
+	r := make(map[int]thrift.TFieldHeader)
+	for i, f := range e.fieldEncoderByIndex {
+		r[i] = *f.header
+	}
+	return r
 }
 
 func (e *structEncoder) Encode(v reflect.Value, p thrift.TProtocol) (err error) {
@@ -499,6 +539,56 @@ func (e *mapEncoder) Decode(v reflect.Value, p thrift.TProtocol) (err error) {
 
 func (e *mapEncoder) Kind() thrift.TType {
 	return thrift.MAP
+}
+
+type setEncoder struct {
+	sliceType      reflect.Type
+	elementEncoder InternalEncoder
+}
+
+func (e *setEncoder) Encode(v reflect.Value, p thrift.TProtocol) (err error) {
+	l := v.Len()
+	h := thrift.TSetHeader{
+		Element: e.elementEncoder.Kind(),
+		Size:    l,
+	}
+	if err = p.WriteSetBegin(h); err == nil {
+		for i := 0; i < l; i++ {
+			if err = e.elementEncoder.Encode(v.Index(i), p); err != nil {
+				return
+			}
+		}
+		err = p.WriteSetEnd()
+	}
+	return
+}
+
+func (e *setEncoder) Decode(v reflect.Value, p thrift.TProtocol) (err error) {
+	var h thrift.TSetHeader
+	if h, err = p.ReadSetBegin(); err == nil {
+		if h.Element != e.elementEncoder.Kind() {
+			for i := 0; i < h.Size; i++ {
+				if err = p.Skip(h.Element); err != nil {
+					return
+				}
+			}
+		} else {
+			if h.Size > v.Len() || v.IsNil() {
+				v.Set(reflect.MakeSlice(e.sliceType, h.Size, h.Size))
+			}
+			for i := 0; i < h.Size; i++ {
+				if err = e.elementEncoder.Decode(v.Index(i), p); err != nil {
+					return
+				}
+			}
+		}
+		err = p.ReadSetEnd()
+	}
+	return
+}
+
+func (e *setEncoder) Kind() thrift.TType {
+	return thrift.SET
 }
 
 type listEncoder struct {

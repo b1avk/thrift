@@ -111,11 +111,25 @@ var BasicTestCases = []BasicTestCase{
 }
 
 type BasicStruct struct {
-	BooleanTrue  bool    `thrift:"0"`
-	BooleanFalse bool    `thrift:"1"`
-	OptionaBool  bool    `thrift:"2,optional"`
-	Double       float64 `thrift:"3"`
-	String       string  `thrift:"4"`
+	BooleanTrue  bool     `thrift:"0"`
+	BooleanFalse bool     `thrift:"1"`
+	OptionaBool  bool     `thrift:"2,optional"`
+	Double       float64  `thrift:"3"`
+	String       string   `thrift:"4"`
+	Set          []string `thrift:"6,optional,set"`
+}
+
+func TestSetEncoder(t *testing.T) {
+	e := dynamic.InternalEncoderOf(reflect.TypeOf((*BasicStruct)(nil)).Elem())
+	if e, ok := e.(interface {
+		FieldHeader() map[int]thrift.TFieldHeader
+	}); ok {
+		if !(e.FieldHeader()[5].Type == thrift.SET) {
+			t.Fatal("field index 5 must be SET")
+		}
+	} else {
+		t.Fatal("invalid encoder")
+	}
 }
 
 func testBasicValue(t *testing.T, p thrift.TProtocol) {
