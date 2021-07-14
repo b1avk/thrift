@@ -6,10 +6,12 @@ import (
 	"math"
 )
 
+// NewTBinaryProtocolFactory returns new TProtocolFactory of NewTBinaryProtocol.
 func NewTBinaryProtocolFactory(cfg *TConfiguration) TProtocolFactory {
 	return &tProtocolFactory{cfg, NewTBinaryProtocol}
 }
 
+// NewTBinaryProtocol returns new binary protocol.
 func NewTBinaryProtocol(t TTransport, cfg *TConfiguration) TProtocol {
 	p := &tBinaryProtocol{cfg: cfg.NonNil()}
 	p.TExtraTransport = NewTExtraTransport(t, p.cfg)

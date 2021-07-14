@@ -9,30 +9,37 @@ const (
 	DefaultMaxMessageSize = 8192
 )
 
+// TConfiguration a shared configuration between an implementations.
 type TConfiguration struct {
 	StrictRead, StrictWrite bool
 	MaxMessageSize          int
 	MaxBufferSize           int
 }
 
+// TConfigurationSetter is interface that wraps SetTConfiguration method.
 type TConfigurationSetter interface {
 	SetTConfiguration(cfg *TConfiguration)
 }
 
+// DefaultTConfiguration default TConfiguration.
 var DefaultTConfiguration = &TConfiguration{
 	StrictWrite:    true,
 	MaxBufferSize:  DefaultMaxBufferSize,
 	MaxMessageSize: DefaultMaxMessageSize,
 }
 
+// IsStrictRead returns protocol strict read configuration.
 func (cfg *TConfiguration) IsStrictRead() bool {
 	return cfg.NonNil().StrictRead
 }
 
+// IsStrictWrite returns protocol strict write configuration.
 func (cfg *TConfiguration) IsStrictWrite() bool {
 	return cfg.NonNil().StrictWrite
 }
 
+// GetMaxMessageSize returns max message size.
+// will returns DefaultMaxMessageSize if cfg.MaxMessageSize < 1.
 func (cfg *TConfiguration) GetMaxMessageSize() int {
 	cfg = cfg.NonNil()
 	if cfg.MaxMessageSize < 1 {
@@ -41,6 +48,8 @@ func (cfg *TConfiguration) GetMaxMessageSize() int {
 	return cfg.MaxMessageSize
 }
 
+// GetMaxBufferSize returns max buffer size.
+// will returns DefaultMaxBufferSize if cfg.MaxBufferSize < 1.
 func (cfg *TConfiguration) GetMaxBufferSize() int {
 	cfg = cfg.NonNil()
 	if cfg.MaxBufferSize < 1 {
@@ -49,6 +58,7 @@ func (cfg *TConfiguration) GetMaxBufferSize() int {
 	return cfg.MaxBufferSize
 }
 
+// CheckSizeForProtocol returns TProtocolException if size is not valid.
 func (cfg *TConfiguration) CheckSizeForProtocol(size int) error {
 	if size < 0 {
 		return NewTProtocolException(TProtocolErrorNegativeSize, fmt.Sprintf("negative size: %d", size))
@@ -59,6 +69,8 @@ func (cfg *TConfiguration) CheckSizeForProtocol(size int) error {
 	return nil
 }
 
+// Propagate propagates cfg to impls.
+// if cfg is nil. DefaultTConfiguration will used instead.
 func (cfg *TConfiguration) Propagate(impls ...interface{}) {
 	cfg = cfg.NonNil()
 	for _, impl := range impls {
@@ -68,6 +80,7 @@ func (cfg *TConfiguration) Propagate(impls ...interface{}) {
 	}
 }
 
+// NonNil returns DefaultTConfiguration if cfg is nil.
 func (cfg *TConfiguration) NonNil() *TConfiguration {
 	if cfg != nil {
 		return cfg

@@ -4,12 +4,14 @@ import (
 	"io"
 )
 
+// TExtraTransport enhanced version of TTransport
 type TExtraTransport interface {
 	TTransport
 	io.ByteReader
 	io.ByteWriter
 }
 
+// NewTExtraTransport wraps t to TExtraTransport.
 func NewTExtraTransport(t TTransport, cfg *TConfiguration) TExtraTransport {
 	cfg.Propagate(t)
 	if t, ok := t.(TExtraTransport); ok {

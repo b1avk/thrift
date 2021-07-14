@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// TTransportError kind of TTransportException.
 type TTransportError byte
 
 const (
@@ -13,15 +14,19 @@ const (
 	TTransportErrorTimeout
 )
 
+// TTransportException a transport-level exception.
 type TTransportException struct {
 	kind TTransportError
 	err  error
 }
 
+// NewTTransportException returns new TTransportException.
 func NewTTransportException(k TTransportError, text string) *TTransportException {
 	return &TTransportException{k, errors.New(text)}
 }
 
+// NewTTransportExceptionFromError returns new TTransportException.
+// it will returns nil if given err is nil.
 func NewTTransportExceptionFromError(err error) error {
 	if err == nil {
 		return nil
@@ -39,14 +44,22 @@ func NewTTransportExceptionFromError(err error) error {
 	return e
 }
 
+// Kind returns kind of TTransportException.
 func (e *TTransportException) Kind() TTransportError {
 	return e.kind
 }
 
+// Unwrap returns holding error.
 func (e *TTransportException) Unwrap() error {
 	return e.err
 }
 
+// Timeout returns true if is timeout error.
+func (e *TTransportException) Timeout() bool {
+	return e.kind == TTransportErrorTimeout || isTimeout(e.err)
+}
+
+// Error returns error message.
 func (e *TTransportException) Error() string {
 	return e.err.Error()
 }

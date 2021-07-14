@@ -1,5 +1,6 @@
 package thrift
 
+// TApplicationError kind of TApplicationException.
 type TApplicationError = int32
 
 const (
@@ -16,15 +17,13 @@ const (
 	TApplicationErrorUnsupportedClientType
 )
 
+// TApplicationException an application-level exception.
 type TApplicationException struct {
 	Message string            `thrift:"1"`
 	Type    TApplicationError `thrift:"2"`
 }
 
-func (e *TApplicationException) Error() string {
-	return e.Message
-}
-
+// Write writes values to p.
 func (e *TApplicationException) Write(p TProtocol) (err error) {
 	if err = p.WriteStructBegin(TStructHeader{"TApplicationException"}); err != nil {
 		return
@@ -56,6 +55,7 @@ func (e *TApplicationException) Write(p TProtocol) (err error) {
 	return
 }
 
+// Read reads values from p.
 func (e *TApplicationException) Read(p TProtocol) (err error) {
 	if _, err = p.ReadStructBegin(); err != nil {
 		return
@@ -98,4 +98,9 @@ func (e *TApplicationException) Read(p TProtocol) (err error) {
 	}
 	err = p.ReadStructEnd()
 	return
+}
+
+// Error returns a error message.
+func (e *TApplicationException) Error() string {
+	return e.Message
 }

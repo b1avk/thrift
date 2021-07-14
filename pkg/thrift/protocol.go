@@ -4,10 +4,14 @@ import (
 	"fmt"
 )
 
+// TProtocolFactory a factory of TProtocol.
 type TProtocolFactory interface {
-	GetProtocol(TTransport) TProtocol
+	// GetProtocol retursn new TTransport.
+	GetProtocol(t TTransport) (p TProtocol)
 }
 
+// TProtocol an interface that contains read/write value methods.
+// it also implement TFlusher which allow to flush buffered buffer.
 type TProtocol interface {
 	TFlusher
 
@@ -108,6 +112,7 @@ type TProtocol interface {
 	Skip(v TType) (err error)
 }
 
+// Skip skips over next v from p.
 func Skip(v TType, p TProtocol) (err error) {
 	switch v {
 	case BOOL:

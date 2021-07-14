@@ -6,16 +6,20 @@ import (
 	"sync"
 )
 
+// TClient is interface that wraps Call method.
 type TClient interface {
+	// Call writes a message.
 	Call(ctx context.Context, method string, args, result TStruct) (err error)
 }
 
+// TStandardClient an implementation of TClient.
 type TStandardClient struct {
 	iprot, oprot TProtocol
 	message      TMessageHeader
 	mutex        sync.Mutex
 }
 
+// NewTStandardClient returns new TStandardClient.
 func NewTStandardClient(iprot, oprot TProtocol) *TStandardClient {
 	if iprot == nil || oprot == nil {
 		switch {
@@ -36,6 +40,7 @@ func NewTStandardClient(iprot, oprot TProtocol) *TStandardClient {
 	}
 }
 
+// Call writes message to oprot and reads from iprot.
 func (p *TStandardClient) Call(ctx context.Context, method string, args, result TStruct) (err error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -94,6 +99,7 @@ func (p *TStandardClient) Call(ctx context.Context, method string, args, result 
 	return
 }
 
+// TPoolClient concurrency implementation of TStandardClient.
 type TPoolClient struct {
 	itrans, otrans TTransportFactory
 	iprot, oprot   TProtocolFactory
@@ -102,6 +108,7 @@ type TPoolClient struct {
 	pool           sync.Pool
 }
 
+// NewTPoolClient returns new TPoolClient.
 func NewTPoolClient(itrans, otrans TTransportFactory, iprot, oprot TProtocolFactory) *TPoolClient {
 	if itrans == nil || otrans == nil {
 		switch {
@@ -131,6 +138,7 @@ func NewTPoolClient(itrans, otrans TTransportFactory, iprot, oprot TProtocolFact
 	}
 }
 
+// Call calls the acquired TStandardClient.
 func (cp *TPoolClient) Call(ctx context.Context, method string, args, result TStruct) error {
 	c, ok := cp.pool.Get().(*TStandardClient)
 	if !ok {
