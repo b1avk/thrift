@@ -64,15 +64,7 @@ func InternalEncoderOf(v reflect.Type) (e InternalEncoder) {
 	case reflect.String:
 		e = new(stringEncoder)
 	case reflect.Map:
-		keyType := v.Key()
-		valueType := v.Elem()
-		e = &mapEncoder{
-			mapType:      v,
-			keyType:      keyType,
-			valueType:    valueType,
-			keyEncoder:   InternalEncoderOf(keyType),
-			valueEncoder: InternalEncoderOf(valueType),
-		}
+		e = newMapEncoder(v)
 	case reflect.Slice:
 		if v.Elem().Kind() == reflect.Uint8 {
 			e = new(binaryEncoder)
@@ -313,6 +305,15 @@ func (e *binaryEncoder) Kind() thrift.TType {
 type mapEncoder struct {
 	mapType, keyType, valueType reflect.Type
 	keyEncoder, valueEncoder    InternalEncoder
+}
+
+func newMapEncoder(v reflect.Type) *mapEncoder {
+	e := &mapEncoder{mapType: v}
+	e.keyType = v.Key()
+	e.valueType = v.Elem()
+	e.keyEncoder = InternalEncoderOf(e.keyType)
+	e.valueEncoder = InternalEncoderOf(e.valueType)
+	return e
 }
 
 func (e *mapEncoder) Encode(v reflect.Value, p thrift.TProtocol) (err error) {
