@@ -428,6 +428,10 @@ type ptrEncoder struct {
 	InternalEncoder
 }
 
+func (e *ptrEncoder) Encode(v reflect.Value, p thrift.TProtocol) error {
+	return e.InternalEncoder.Encode(v.Elem(), p)
+}
+
 func (e *ptrEncoder) Decode(v reflect.Value, p thrift.TProtocol) error {
 	v.Set(reflect.New(e.valueType))
 	return e.InternalEncoder.Decode(v.Elem(), p)
