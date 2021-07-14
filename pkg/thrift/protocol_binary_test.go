@@ -18,3 +18,16 @@ func TestTBinaryProtocolMessageHeader(t *testing.T) {
 		t.Fatal("fail to read message header", err)
 	}
 }
+
+func TestTBinaryProtocolMessageHeaderStrict(t *testing.T) {
+	p := thrift.NewTBinaryProtocol(thrift.NewTMemoryBuffer(), &thrift.TConfiguration{
+		StrictWrite: false,
+		StrictRead:  true,
+	})
+	if p.WriteMessageBegin(thrift.TMessageHeader{}) != nil {
+		t.Fatal("fail to write message header")
+	}
+	if _, err := p.ReadMessageBegin(); err == nil {
+		t.Fatal("must error on reading message header", err)
+	}
+}
