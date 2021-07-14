@@ -655,7 +655,7 @@ func (e *ptrEncoder) Decode(v reflect.Value, p thrift.TProtocol) error {
 	return e.InternalEncoder.Decode(v.Elem(), p)
 }
 
-func mustBe(v reflect.Value, k reflect.Kind) {
+func mustBe(v interface{ Kind() reflect.Kind }, k reflect.Kind) {
 	if v.Kind() != k {
 		panic(fmt.Sprintf("reflection: value must be %v not %v", k, v.Kind()))
 	}
