@@ -74,6 +74,10 @@ var SimpleTestCases = []SimpleTestCase{
 		name:  "Slice",
 		value: []string{"Is", "This", "World", "Or", "Mars", "?"},
 	},
+	{
+		name:  "Map",
+		value: map[string]int{"Hello": 1, "Hi": 2},
+	},
 }
 
 func TestBasicValue(t *testing.T) {

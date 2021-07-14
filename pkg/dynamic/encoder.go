@@ -63,6 +63,16 @@ func InternalEncoderOf(v reflect.Type) (e InternalEncoder) {
 		e = new(intEncoder)
 	case reflect.String:
 		e = new(stringEncoder)
+	case reflect.Map:
+		keyType := v.Key()
+		valueType := v.Elem()
+		e = &mapEncoder{
+			mapType:      v,
+			keyType:      keyType,
+			valueType:    valueType,
+			keyEncoder:   InternalEncoderOf(keyType),
+			valueEncoder: InternalEncoderOf(valueType),
+		}
 	case reflect.Slice:
 		if v.Elem().Kind() == reflect.Uint8 {
 			e = new(binaryEncoder)
@@ -290,6 +300,69 @@ func (e *binaryEncoder) Kind() thrift.TType {
 	return thrift.STRING
 }
 
+type mapEncoder struct {
+	mapType, keyType, valueType reflect.Type
+	keyEncoder, valueEncoder    InternalEncoder
+}
+
+func (e *mapEncoder) Encode(v reflect.Value, p thrift.TProtocol) (err error) {
+	l := v.Len()
+	h := thrift.TMapHeader{
+		Key:   e.keyEncoder.Kind(),
+		Value: e.valueEncoder.Kind(),
+		Size:  l,
+	}
+	if err = p.WriteMapBegin(h); err == nil {
+		for iter := v.MapRange(); iter.Next(); {
+			if err = e.keyEncoder.Encode(iter.Key(), p); err != nil {
+				return
+			}
+			if err = e.valueEncoder.Encode(iter.Value(), p); err != nil {
+				return
+			}
+		}
+		err = p.WriteListEnd()
+	}
+	return
+}
+
+func (e *mapEncoder) Decode(v reflect.Value, p thrift.TProtocol) (err error) {
+	var h thrift.TMapHeader
+	if h, err = p.ReadMapBegin(); err == nil {
+		if h.Key != e.keyEncoder.Kind() || h.Value != e.valueEncoder.Kind() {
+			for i := 0; i < h.Size; i++ {
+				if err = p.Skip(h.Key); err != nil {
+					return
+				}
+				if err = p.Skip(h.Value); err != nil {
+					return
+				}
+			}
+		} else {
+			if v.IsNil() {
+				v.Set(reflect.MakeMap(e.mapType))
+			}
+			for i := 0; i < h.Size; i++ {
+				key := reflect.New(e.keyType).Elem()
+				if err = e.keyEncoder.Decode(key, p); err != nil {
+					return
+				}
+				value := reflect.New(e.valueType).Elem()
+				if err = e.valueEncoder.Decode(value, p); err != nil {
+					return
+				}
+				v.SetMapIndex(key, value)
+			}
+		}
+		err = p.ReadMapEnd()
+	}
+	return
+}
+
+func (e *mapEncoder) Kind() thrift.TType {
+	return thrift.MAP
+}
+
 type listEncoder struct {
 	sliceType      reflect.Type
 	elementEncoder InternalEncoder
@@ -318,7 +391,7 @@ func (e *listEncoder) Decode(v reflect.Value, p thrift.TProtocol) (err error) {
 				}
 			}
 		} else {
-			if h.Size > v.Len() {
+			if h.Size > v.Len() || v.IsNil() {
 				v.Set(reflect.MakeSlice(e.sliceType, h.Size, h.Size))
 			}
 			for i := 0; i < h.Size; i++ {
