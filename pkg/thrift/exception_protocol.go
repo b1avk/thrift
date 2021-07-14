@@ -9,6 +9,7 @@ type TProtocolError byte
 const (
 	TProtocolErrorUnknown TProtocolError = iota
 	TProtocolErrorInvalidData
+	TProtocolErrorBadVersion
 )
 
 type TProtocolException struct {
