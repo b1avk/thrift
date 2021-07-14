@@ -191,3 +191,12 @@ func Skip(v TType, p TProtocol) (err error) {
 	}
 	return
 }
+
+type tProtocolFactory struct {
+	cfg *TConfiguration
+	new func(TTransport, *TConfiguration) TProtocol
+}
+
+func (f *tProtocolFactory) GetProtocol(t TTransport) TProtocol {
+	return f.new(t, f.cfg)
+}
