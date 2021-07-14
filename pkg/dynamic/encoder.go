@@ -83,6 +83,12 @@ func InternalEncoderOf(v reflect.Type) (e InternalEncoder) {
 				elementEncoder: InternalEncoderOf(v.Elem()),
 			}
 		}
+	case reflect.Ptr:
+		valueTpye := v.Elem()
+		e = &ptrEncoder{
+			valueType:       valueTpye,
+			InternalEncoder: InternalEncoderOf(valueTpye),
+		}
 	default:
 		panic(fmt.Errorf("unexpected Type: %v", v.Kind()))
 	}
@@ -414,6 +420,16 @@ func (e *listEncoder) Decode(v reflect.Value, p thrift.TProtocol) (err error) {
 
 func (e *listEncoder) Kind() thrift.TType {
 	return thrift.LIST
+}
+
+type ptrEncoder struct {
+	valueType reflect.Type
+	InternalEncoder
+}
+
+func (e *ptrEncoder) Decode(v reflect.Value, p thrift.TProtocol) error {
+	v.Set(reflect.New(e.valueType))
+	return e.InternalEncoder.Decode(v.Elem(), p)
 }
 
 func mustBe(v reflect.Value, k reflect.Kind) {
