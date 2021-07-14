@@ -4,6 +4,10 @@ import (
 	"fmt"
 )
 
+type TProtocolFactory interface {
+	GetProtocol(TTransport) TProtocol
+}
+
 type TProtocol interface {
 	TFlusher
 
