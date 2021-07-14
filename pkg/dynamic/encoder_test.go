@@ -1,7 +1,6 @@
 package dynamic_test
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -106,17 +105,21 @@ var BasicTestCases = []BasicTestCase{
 			BooleanFalse: false,
 			Double:       0.123,
 			String:       "Hello Mars",
+			Enum:         BasicEnum(123),
 		},
 	},
 }
 
+type BasicEnum int32
+
 type BasicStruct struct {
-	BooleanTrue  bool     `thrift:"0"`
-	BooleanFalse bool     `thrift:"1"`
-	OptionaBool  bool     `thrift:"2,optional"`
-	Double       float64  `thrift:"3"`
-	String       string   `thrift:"4"`
-	Set          []string `thrift:"6,optional,set"`
+	BooleanTrue  bool      `thrift:"0"`
+	BooleanFalse bool      `thrift:"1"`
+	OptionaBool  bool      `thrift:"2,optional"`
+	Double       float64   `thrift:"3"`
+	String       string    `thrift:"4"`
+	Set          []string  `thrift:"6,optional,set"`
+	Enum         BasicEnum `thrift:"7"`
 }
 
 func TestSetEncoder(t *testing.T) {
@@ -146,7 +149,6 @@ func testBasicValue(t *testing.T, p thrift.TProtocol) {
 			}
 			r := rv.Elem().Interface()
 			if !reflect.DeepEqual(c.value, r) {
-				fmt.Println(c.value, r)
 				t.Fatal("value obtained for encode and decode mismatch")
 			}
 		})
