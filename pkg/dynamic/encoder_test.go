@@ -122,6 +122,8 @@ type BasicStruct struct {
 	Enum         BasicEnum `thrift:"7"`
 }
 
+type GetProtocol func() thrift.TProtocol
+
 func TestSetEncoder(t *testing.T) {
 	e := dynamic.InternalEncoderOf(reflect.TypeOf((*BasicStruct)(nil)).Elem())
 	if e, ok := e.(interface {
@@ -135,9 +137,10 @@ func TestSetEncoder(t *testing.T) {
 	}
 }
 
-func testBasicValue(t *testing.T, p thrift.TProtocol) {
+func testBasicValue(t *testing.T, getProtocol GetProtocol) {
 	for _, c := range BasicTestCases {
 		t.Run(c.name, func(t *testing.T) {
+			p := getProtocol()
 			vt := reflect.TypeOf(c.value)
 			e := dynamic.ValueEncoderOf(vt)
 			if err := e.Encode(c.value, p); err != nil {
@@ -156,7 +159,15 @@ func testBasicValue(t *testing.T, p thrift.TProtocol) {
 }
 
 func TestBasicValueBinaryProtocol(t *testing.T) {
-	testBasicValue(t, thrift.NewTBinaryProtocol(thrift.NewTMemoryBuffer(), nil))
+	testBasicValue(t, func() thrift.TProtocol {
+		return thrift.NewTBinaryProtocol(thrift.NewTMemoryBuffer(), nil)
+	})
+}
+
+func TestBasicValueCompactProtocol(t *testing.T) {
+	testBasicValue(t, func() thrift.TProtocol {
+		return thrift.NewTCompactProtocol(thrift.NewTMemoryBuffer(), nil)
+	})
 }
 
 func toPTR(s interface{}) interface{} {
