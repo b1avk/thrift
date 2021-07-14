@@ -1,8 +1,10 @@
 package thrift
 
 import (
+	"container/list"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"math"
 )
 
@@ -15,6 +17,8 @@ func NewTCompactProtocolFactory(cfg *TConfiguration) TProtocolFactory {
 func NewTCompactProtocol(t TTransport, cfg *TConfiguration) TProtocol {
 	p := &tCompactProtocol{cfg: cfg}
 	p.TExtraTransport = NewTExtraTransport(t, cfg)
+	p.identityStack.Init()
+	p.booleanWrite = -1
 	return p
 }
 
@@ -27,10 +31,66 @@ const (
 	compactTypeShiftAmount = 5
 )
 
+type compactType = byte
+
+const (
+	compactStop compactType = iota
+	compactBooleanTrue
+	compactBooleanFalse
+	compactByte
+	compactI16
+	compactI32
+	compactI64
+	compactDouble
+	compactBinary
+	compactList
+	compactSet
+	compactMap
+	compactStruct
+)
+
+var tTypeToCompactType = map[TType]compactType{
+	STOP:   compactStop,
+	BOOL:   compactByte,
+	I16:    compactI16,
+	U16:    compactI16,
+	I32:    compactI32,
+	U32:    compactI32,
+	I64:    compactI64,
+	U64:    compactI64,
+	DOUBLE: compactDouble,
+	STRING: compactBinary,
+	LIST:   compactList,
+	SET:    compactSet,
+	MAP:    compactMap,
+	STRUCT: compactStruct,
+}
+
+var compactTypeToTType = map[compactType]TType{
+	compactStop:         STOP,
+	compactBooleanFalse: BOOL,
+	compactBooleanTrue:  BOOL,
+	compactI16:          I16,
+	compactI32:          I32,
+	compactI64:          I64,
+	compactDouble:       DOUBLE,
+	compactBinary:       STRING,
+	compactList:         LIST,
+	compactSet:          SET,
+	compactMap:          MAP,
+	compactStruct:       STRUCT,
+}
+
 type tCompactProtocol struct {
 	TExtraTransport
 	cfg *TConfiguration
 	buf [binary.MaxVarintLen64]byte
+
+	identityStack list.List
+	lastIdentity  int16
+
+	booleanWrite int16
+	booleanRead  byte
 }
 
 func (p *tCompactProtocol) WriteMessageBegin(h TMessageHeader) (err error) {
@@ -49,16 +109,46 @@ func (p *tCompactProtocol) WriteMessageEnd() error {
 }
 
 func (p *tCompactProtocol) WriteStructBegin(h TStructHeader) error {
+	p.identityStack.PushBack(p.lastIdentity)
+	p.lastIdentity = 0
 	return nil
 }
 
 func (p *tCompactProtocol) WriteStructEnd() error {
+	e := p.identityStack.Back()
+	p.lastIdentity = e.Value.(int16)
+	p.identityStack.Remove(e)
 	return nil
 }
 
 func (p *tCompactProtocol) WriteFieldBegin(h TFieldHeader) error {
-	// TODO
-	return nil
+	if h.Type == BOOL {
+		p.booleanWrite = h.Identity
+		return nil
+	} else {
+		if c, ok := tTypeToCompactType[h.Type]; ok {
+			return p.writeFieldHeader(c, h.Identity)
+		}
+		return NewTProtocolException(TProtocolErrorInvalidData, fmt.Sprintf("unexpected TType: %d", h.Type))
+	}
+}
+
+func (p *tCompactProtocol) writeFieldHeader(t compactType, i int16) (err error) {
+	delta := i - p.lastIdentity
+	if 0 < delta && delta <= 15 {
+		if err = p.WriteByte(byte((delta << 4)) | t); err != nil {
+			return
+		}
+	} else {
+		if err = p.WriteByte(t); err != nil {
+			return
+		}
+		if err = p.WriteI16(i); err != nil {
+			return
+		}
+	}
+	p.lastIdentity = i
+	return
 }
 
 func (p *tCompactProtocol) WriteFieldEnd() error {
@@ -66,7 +156,7 @@ func (p *tCompactProtocol) WriteFieldEnd() error {
 }
 
 func (p *tCompactProtocol) WriteFieldStop() error {
-	return p.WriteByte(STOP)
+	return p.WriteByte(compactStop)
 }
 
 func (p *tCompactProtocol) WriteMapBegin(h TMapHeader) (err error) {
@@ -105,8 +195,16 @@ func (p *tCompactProtocol) WriteListEnd() error {
 }
 
 func (p *tCompactProtocol) WriteBool(v bool) error {
-	// TODO
-	return nil
+	c := compactBooleanFalse
+	if v {
+		c = compactBooleanTrue
+	}
+	if p.booleanWrite != -1 {
+		err := p.writeFieldHeader(c, p.booleanWrite)
+		p.booleanWrite = -1
+		return err
+	}
+	return p.WriteByte(c)
 }
 
 func (p *tCompactProtocol) WriteByte(v byte) error {
@@ -196,15 +294,47 @@ func (p *tCompactProtocol) ReadMessageEnd() error {
 }
 
 func (p *tCompactProtocol) ReadStructBegin() (h TStructHeader, err error) {
+	p.identityStack.PushBack(p.lastIdentity)
+	p.lastIdentity = 0
 	return
 }
 
 func (p *tCompactProtocol) ReadStructEnd() error {
+	e := p.identityStack.Back()
+	p.lastIdentity = e.Value.(int16)
+	p.identityStack.Remove(e)
 	return nil
 }
 
 func (p *tCompactProtocol) ReadFieldBegin() (h TFieldHeader, err error) {
-	// TODO
+	var b byte
+	if b, err = p.ReadByte(); err != nil {
+		return
+	}
+	if (b & 0x0f) == compactStop {
+		return
+	}
+	delta := int16((b & 0xf0) >> 4)
+	if delta == 0 {
+		if h.Identity, err = p.ReadI16(); err != nil {
+			return
+		}
+	} else {
+		h.Identity = p.lastIdentity + delta
+	}
+	h.Type = b & 0x0f
+	switch h.Type {
+	case compactBooleanTrue:
+		p.booleanRead = 1
+	case compactBooleanFalse:
+		p.booleanRead = 2
+	}
+	if b, ok := compactTypeToTType[h.Type]; ok {
+		h.Type = b
+	} else {
+		err = NewTProtocolException(TProtocolErrorInvalidData, fmt.Sprintf("unexpected compact Type: %d", h.Type))
+	}
+	p.lastIdentity = h.Identity
 	return
 }
 
@@ -248,8 +378,13 @@ func (p *tCompactProtocol) ReadListEnd() error {
 }
 
 func (p *tCompactProtocol) ReadBool() (bool, error) {
-	// TODO
-	return false, nil
+	if p.booleanRead != 0 {
+		v := p.booleanRead == 1
+		p.booleanRead = 0
+		return v, nil
+	}
+	v, err := p.ReadByte()
+	return v == compactBooleanTrue, err
 }
 
 func (p *tCompactProtocol) ReadByte() (byte, error) {
