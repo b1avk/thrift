@@ -6,7 +6,7 @@ import (
 )
 
 type TTransportFactory interface {
-	GetTTransport(TTransport) (TTransport, error)
+	GetTransport(TTransport) (TTransport, error)
 }
 
 type TTransport interface {
