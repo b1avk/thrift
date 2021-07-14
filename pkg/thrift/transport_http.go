@@ -34,6 +34,7 @@ type THttpClient struct {
 	cache [1]byte
 }
 
+// NewDefaultTHttpClientOptions returns new default THttpClientOptions.
 func NewDefaultTHttpClientOptions() THttpClientOptions {
 	return THttpClientOptions{
 		Header: map[string][]string{"Content-Type": {"application/x-thrift"}},
