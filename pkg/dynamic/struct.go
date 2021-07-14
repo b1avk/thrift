@@ -9,23 +9,28 @@ import (
 type TStruct struct {
 	typ     reflect.Type
 	value   reflect.Value
-	encoder InternalEncoder
+	encoder *structEncoder
 }
 
 func NewTStruct(v reflect.Type) *TStruct {
 	mustBe(v, reflect.Struct)
 	return &TStruct{
 		typ:     v,
-		encoder: InternalEncoderOf(v),
+		encoder: InternalEncoderOf(v).(*structEncoder),
 	}
 }
 
 func (e *TStruct) New() {
-	e.value.Set(reflect.New(e.typ).Elem())
+	if !(e == nil || e.typ == nil) {
+		e.value.Set(reflect.New(e.typ).Elem())
+	}
 }
 
 func (e *TStruct) Copy() *TStruct {
-	return &TStruct{e.typ, reflect.Value{}, e.encoder}
+	if e == nil || e.typ == nil {
+		return nil
+	}
+	return &TStruct{e.typ, reflect.New(e.typ).Elem(), e.encoder}
 }
 
 func (e *TStruct) Write(p thrift.TProtocol) error {
