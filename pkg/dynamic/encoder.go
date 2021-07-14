@@ -50,6 +50,7 @@ type InternalEncoder interface {
 	Kind() thrift.TType
 }
 
+// InternalEncoderOf returns InternalEncoder of v.
 func InternalEncoderOf(v reflect.Type) (e InternalEncoder) {
 	return internalEncoderOf(v, nil)
 }
