@@ -8,12 +8,12 @@ import (
 	"github.com/b1avk/thrift/pkg/thrift"
 )
 
-type SimpleTestCase struct {
+type BasicTestCase struct {
 	name  string
 	value interface{}
 }
 
-var SimpleTestCases = []SimpleTestCase{
+var BasicTestCases = []BasicTestCase{
 	{
 		name:  "BooleanTrue",
 		value: true,
@@ -86,10 +86,22 @@ var SimpleTestCases = []SimpleTestCase{
 		name:  "Map",
 		value: map[string]int{"Hello": 1, "Hi": 2},
 	},
+	{
+		name:  "BooleanTruePtr",
+		value: toPTR(true).(*bool),
+	},
+	{
+		name:  "BooleanFalsePtr",
+		value: toPTR(false).(*bool),
+	},
+	{
+		name:  "StringPtr",
+		value: toPTR("Hello World").(*string),
+	},
 }
 
 func testBasicValue(t *testing.T, p thrift.TProtocol) {
-	for _, c := range SimpleTestCases {
+	for _, c := range BasicTestCases {
 		t.Run(c.name, func(t *testing.T) {
 			vt := reflect.TypeOf(c.value)
 			e := dynamic.ValueEncoderOf(vt)
@@ -110,4 +122,10 @@ func testBasicValue(t *testing.T, p thrift.TProtocol) {
 
 func TestBasicValueBinaryProtocol(t *testing.T) {
 	testBasicValue(t, thrift.NewTBinaryProtocol(thrift.NewTMemoryBuffer()))
+}
+
+func toPTR(s interface{}) interface{} {
+	r := reflect.New(reflect.TypeOf(s))
+	r.Elem().Set(reflect.ValueOf(s))
+	return r.Interface()
 }
