@@ -15,6 +15,7 @@ type THttpClientOptions struct {
 }
 
 type THttpClientFactory struct {
+	url     string
 	options THttpClientOptions
 }
 
@@ -29,12 +30,23 @@ type THttpClient struct {
 	cache [1]byte
 }
 
-func NewTHttpClientFactory(options THttpClientOptions) *THttpClientFactory {
-	return &THttpClientFactory{options}
+func NewTHttpClientFactory(urlstr string) *THttpClientFactory {
+	return NewTHttpClientFactoryWithOptions(urlstr, THttpClientOptions{})
 }
 
-func NewTHttpClientWithOptions(uri string, options THttpClientOptions) (*THttpClient, error) {
-	parsedURL, err := url.Parse(uri)
+func NewTHttpClientFactoryWithOptions(urlstr string, options THttpClientOptions) *THttpClientFactory {
+	return &THttpClientFactory{urlstr, options}
+}
+
+func (f *THttpClientFactory) GetTransport(t TTransport) (TTransport, error) {
+	if t, ok := t.(*THttpClient); ok && t.url != nil {
+		return NewTHttpClientWithOptions(t.url.String(), f.options)
+	}
+	return NewTHttpClientWithOptions(f.url, f.options)
+}
+
+func NewTHttpClientWithOptions(urlstr string, options THttpClientOptions) (*THttpClient, error) {
+	parsedURL, err := url.Parse(urlstr)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +62,8 @@ func NewTHttpClientWithOptions(uri string, options THttpClientOptions) (*THttpCl
 	}, nil
 }
 
-func NewTHttpClient(uri string) (*THttpClient, error) {
-	return NewTHttpClientWithOptions(uri, THttpClientOptions{})
+func NewTHttpClient(urlstr string) (*THttpClient, error) {
+	return NewTHttpClientWithOptions(urlstr, THttpClientOptions{})
 }
 
 func (c *THttpClient) SetHeader(k, v string) {
