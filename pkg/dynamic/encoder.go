@@ -73,7 +73,7 @@ func internalEncoderOf(v reflect.Type, f *fieldTag) (e InternalEncoder) {
 	case reflect.Struct:
 		e = newStructEncoder(v)
 	case reflect.Map:
-		e = newMapEncoder(v)
+		e = newMapEncoder(v, f)
 	case reflect.Slice:
 		if v.Elem().Kind() == reflect.Uint8 {
 			e = new(binaryEncoder)
@@ -474,12 +474,12 @@ type mapEncoder struct {
 	keyEncoder, valueEncoder    InternalEncoder
 }
 
-func newMapEncoder(v reflect.Type) *mapEncoder {
+func newMapEncoder(v reflect.Type, f *fieldTag) *mapEncoder {
 	e := &mapEncoder{mapType: v}
 	e.keyType = v.Key()
 	e.valueType = v.Elem()
-	e.keyEncoder = InternalEncoderOf(e.keyType)
-	e.valueEncoder = InternalEncoderOf(e.valueType)
+	e.keyEncoder = internalEncoderOf(e.keyType, f)
+	e.valueEncoder = internalEncoderOf(e.valueType, f)
 	return e
 }
 
