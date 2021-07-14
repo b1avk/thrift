@@ -181,8 +181,8 @@ func (p *tBinaryProtocol) ReadMessageBegin() (h TMessageHeader, err error) {
 	if n, err = p.readSize(); err != nil {
 		return
 	}
-	if n < 0 {
-		if int64(n)&binaryVersionMask != binaryVersion1 {
+	if int32(n) < 0 {
+		if (n & binaryVersionMask) != binaryVersion1 {
 			err = NewTProtocolException(TProtocolErrorBadVersion, "bad version in message header")
 		} else {
 			h.Type = byte(n & binaryTypeMask)
