@@ -7,6 +7,7 @@ import (
 	"github.com/b1avk/thrift/pkg/thrift"
 )
 
+// WrapServiceClient wraps s into c.
 func WrapServiceClient(s interface{}, c thrift.TClient) interface{} {
 	sv := reflect.ValueOf(s)
 	if sv.Kind() == reflect.Ptr {
@@ -36,8 +37,8 @@ func makeClientMethod(c thrift.TClient, v reflect.StructField) (reflect.Value, b
 			ctx = args[0].Interface().(context.Context)
 			args = args[1:]
 		}
-		res := f.NewResult()
-		err := c.Call(ctx, f.method, f.NewArgs(args), res)
-		return f.ReturnResult(res, err)
+		res := f.newResult()
+		err := c.Call(ctx, f.method, f.newArgs(args), res)
+		return f.returnResult(res, err)
 	}), true
 }

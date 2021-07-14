@@ -12,10 +12,13 @@ import (
 	"github.com/b1avk/thrift/pkg/thrift"
 )
 
+// ValueEncoder wrapper for InternalEncoder which
+// allow to encode/decode without calling reflect.ValueOf.
 type ValueEncoder struct {
 	InternalEncoder
 }
 
+// ValueEncoderOf returns new ValueEncoder of v.
 func ValueEncoderOf(v reflect.Type) *ValueEncoder {
 	if e := getValueEncoderOf(v); e != nil {
 		return e
@@ -25,17 +28,25 @@ func ValueEncoderOf(v reflect.Type) *ValueEncoder {
 	return e
 }
 
+// Encode writes v to p.
 func (e *ValueEncoder) Encode(v interface{}, p thrift.TProtocol) error {
 	return e.InternalEncoder.Encode(reflect.ValueOf(v), p)
 }
 
+// Decode reads v from p.
 func (e *ValueEncoder) Decode(v interface{}, p thrift.TProtocol) error {
 	return e.InternalEncoder.Decode(reflect.ValueOf(v).Elem(), p)
 }
 
+// InternalEncoder a low-level value encoder.
 type InternalEncoder interface {
+	// Encode writes v to p.
 	Encode(v reflect.Value, p thrift.TProtocol) error
+
+	// Decode reads v from p.
 	Decode(v reflect.Value, p thrift.TProtocol) error
+
+	// Kind returns thrift.TType of InternalEncoder.
 	Kind() thrift.TType
 }
 
