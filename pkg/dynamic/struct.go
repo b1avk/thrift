@@ -24,6 +24,10 @@ func (e *TStruct) New() {
 	e.value.Set(reflect.New(e.typ).Elem())
 }
 
+func (e *TStruct) Copy() *TStruct {
+	return &TStruct{e.typ, reflect.Value{}, e.encoder}
+}
+
 func (e *TStruct) Write(p thrift.TProtocol) error {
 	return e.encoder.Encode(e.value, p)
 }
