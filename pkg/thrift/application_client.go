@@ -132,9 +132,6 @@ func NewTPoolClient(itrans, otrans TTransportFactory, iprot, oprot TProtocolFact
 }
 
 func (cp *TPoolClient) Call(ctx context.Context, method string, args, result TStruct) error {
-	cp.mutex.Lock()
-	cp.sequence++
-	cp.mutex.Unlock()
 	c, ok := cp.pool.Get().(*TStandardClient)
 	if !ok {
 		itrans, err := cp.itrans.GetTransport(nil)
@@ -147,6 +144,9 @@ func (cp *TPoolClient) Call(ctx context.Context, method string, args, result TSt
 		}
 		c = NewTStandardClient(cp.iprot.GetProtocol(itrans), cp.oprot.GetProtocol(otrans))
 	}
+	cp.mutex.Lock()
+	cp.sequence++
+	cp.mutex.Unlock()
 	defer cp.pool.Put(c)
 	c.message.Identity = cp.sequence
 	return c.Call(ctx, method, args, result)
