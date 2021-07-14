@@ -127,10 +127,13 @@ func (c *THttpClient) Flush(ctx context.Context) (err error) {
 	if ctx != nil {
 		req = req.WithContext(ctx)
 	}
-	c.response, err = c.client.Do(req)
+	if c.response, err = c.client.Do(req); err != nil {
+		return NewTTransportExceptionFromError(err)
+	}
 	if c.response.StatusCode != http.StatusOK {
+		status := c.response.StatusCode
 		c.closeResponse()
-		return NewTTransportException(TTransportErrorUnknown, fmt.Sprintf("HTTP status code: %v", c.response.StatusCode))
+		return NewTTransportException(TTransportErrorUnknown, fmt.Sprintf("HTTP status code: %v", status))
 	}
 	return
 }
@@ -139,7 +142,7 @@ func (c *THttpClient) closeResponse() (err error) {
 	if c.response != nil {
 		io.Copy(ioutil.Discard, c.response.Body)
 		err = c.response.Body.Close()
+		c.response = nil
 	}
-	c.response = nil
 	return err
 }
