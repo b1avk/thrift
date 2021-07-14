@@ -323,6 +323,9 @@ func (p *tBinaryProtocol) ReadString() (v string, err error) {
 func (p *tBinaryProtocol) ReadBinary() (v []byte, err error) {
 	var n int
 	if n, err = p.readSize(); err == nil {
+		if err = p.cfg.CheckSizeForProtocol(n); err != nil {
+			return
+		}
 		v = make([]byte, n)
 		_, err = p.Read(v)
 	}
@@ -340,6 +343,9 @@ func (p *tBinaryProtocol) readSize() (int, error) {
 }
 
 func (p *tBinaryProtocol) readStringBody(n int) (string, error) {
+	if err := p.cfg.CheckSizeForProtocol(n); err != nil {
+		return "", err
+	}
 	v := make([]byte, n)
 	_, err := p.Read(v)
 	return string(v), err
