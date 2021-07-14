@@ -154,7 +154,7 @@ func testBasicValue(t *testing.T, p thrift.TProtocol) {
 }
 
 func TestBasicValueBinaryProtocol(t *testing.T) {
-	testBasicValue(t, thrift.NewTBinaryProtocol(thrift.NewTMemoryBuffer()))
+	testBasicValue(t, thrift.NewTBinaryProtocol(thrift.NewTMemoryBuffer(nil), nil))
 }
 
 func toPTR(s interface{}) interface{} {
