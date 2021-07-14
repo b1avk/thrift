@@ -60,3 +60,9 @@ type TListHeader struct {
 	Element TType
 	Size    int
 }
+
+type TStruct interface {
+	Read(p TProtocol) (err error)
+
+	Write(p TProtocol) (err error)
+}
