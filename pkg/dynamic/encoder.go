@@ -427,7 +427,7 @@ func (e *structEncoder) Encode(v reflect.Value, p thrift.TProtocol) (err error) 
 			if fe.tag.optional && f.IsZero() {
 				continue
 			} else {
-				if (f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr) && f.IsNil() {
+				if (f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr) && f.IsZero() {
 					continue
 				}
 				if err = p.WriteFieldBegin(*fe.header); err != nil {
