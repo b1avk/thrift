@@ -439,9 +439,9 @@ func (e *structEncoder) Encode(v reflect.Value, p thrift.TProtocol) (err error) 
 					if err = fe.Encode(f, p); err != nil {
 						return
 					}
-				}
-				if err = p.WriteFieldEnd(); err != nil {
-					return
+					if err = p.WriteFieldEnd(); err != nil {
+						return
+					}
 				}
 			}
 		}
