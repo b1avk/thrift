@@ -111,14 +111,7 @@ type TPoolClient struct {
 // NewTPoolClient returns new TPoolClient.
 func NewTPoolClient(itrans, otrans TTransportFactory, iprot, oprot TProtocolFactory) *TPoolClient {
 	if itrans == nil {
-		switch {
-		case itrans == nil:
-			itrans = otrans
-		case oprot == nil:
-			otrans = itrans
-		default:
-			panic("thrift.NewTPoolClient: itrans must be non-nil")
-		}
+		panic("thrift.NewTPoolClient: itrans must be non-nil")
 	}
 	if iprot == nil || oprot == nil {
 		switch {
