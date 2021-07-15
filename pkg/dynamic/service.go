@@ -74,7 +74,7 @@ func parseDynamicField(t reflect.StructField) (f dynamicField, err error) {
 func (f dynamicField) newArgs(args []reflect.Value) *TStruct {
 	v := f.args.Copy()
 	v.New()
-	for i := range f.args.encoder.fieldEncoderByIndex {
+	for i := range f.args.encoder.fieldEncoderLists {
 		v.value.Field(i).Set(args[0])
 		args = args[1:]
 	}
@@ -87,7 +87,7 @@ func (f dynamicField) newResult() *TStruct {
 
 func (f dynamicField) returnResult(res *TStruct, err error) (results []reflect.Value) {
 	if res != nil {
-		for i := range res.encoder.fieldEncoderByIndex {
+		for i := range res.encoder.fieldEncoderLists {
 			results = append(results, res.value.Field(i))
 		}
 	}

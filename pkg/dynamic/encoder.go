@@ -377,6 +377,7 @@ func (e *fieldEncoder) Header() thrift.TFieldHeader {
 }
 
 type structEncoder struct {
+	fieldEncoderLists    []int
 	fieldEncoderByIndex  map[int]fieldEncoder
 	fieldIndexByIdentity map[int16]int
 }
@@ -405,6 +406,7 @@ func newStructEncoder(v reflect.Type) *structEncoder {
 			if _, ok := e.fieldIndexByIdentity[fh.Identity]; ok {
 				panic(fmt.Errorf("field %v already defined", fh.Identity))
 			}
+			e.fieldEncoderLists = append(e.fieldEncoderLists, i)
 			e.fieldEncoderByIndex[i] = fe
 			e.fieldIndexByIdentity[fh.Identity] = i
 		}
@@ -422,23 +424,25 @@ func (e *structEncoder) FieldHeader() map[int]thrift.TFieldHeader {
 
 func (e *structEncoder) Encode(v reflect.Value, p thrift.TProtocol) (err error) {
 	if err = p.WriteStructBegin(thrift.TStructHeader{}); err == nil {
-		for i, fe := range e.fieldEncoderByIndex {
-			f := v.Field(i)
-			if fe.tag.optional && f.IsZero() {
-				continue
-			} else {
-				if (f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr) && f.IsZero() {
+		for i := range e.fieldEncoderLists {
+			if fe, ok := e.fieldEncoderByIndex[i]; ok {
+				f := v.Field(i)
+				if fe.tag.optional && f.IsZero() {
 					continue
+				} else {
+					if (f.Kind() == reflect.Struct || f.Kind() == reflect.Ptr) && f.IsZero() {
+						continue
+					}
+					if err = p.WriteFieldBegin(*fe.header); err != nil {
+						return
+					}
+					if err = fe.Encode(f, p); err != nil {
+						return
+					}
 				}
-				if err = p.WriteFieldBegin(*fe.header); err != nil {
+				if err = p.WriteFieldEnd(); err != nil {
 					return
 				}
-				if err = fe.Encode(f, p); err != nil {
-					return
-				}
-			}
-			if err = p.WriteFieldEnd(); err != nil {
-				return
 			}
 		}
 		if err = p.WriteFieldStop(); err == nil {
