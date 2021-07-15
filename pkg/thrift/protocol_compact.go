@@ -263,7 +263,9 @@ func (p *tCompactProtocol) Write(v []byte) (int, error) {
 }
 
 func (p *tCompactProtocol) writeSize(v int) error {
-	return p.WriteI64(int64(v))
+	n := binary.PutUvarint(p.buf[:], uint64(v))
+	_, err := p.Write(p.buf[:n])
+	return err
 }
 
 func (p *tCompactProtocol) ReadMessageBegin() (h TMessageHeader, err error) {
@@ -454,8 +456,8 @@ func (p *tCompactProtocol) Read(v []byte) (int, error) {
 }
 
 func (p *tCompactProtocol) readSize() (int, error) {
-	v, err := p.ReadI32()
-	return int(v), err
+	v, err := binary.ReadUvarint(p.TExtraTransport)
+	return int(v), NewTProtocolExceptionFromError(err)
 }
 
 func (p *tCompactProtocol) readStringBody(n int) (string, error) {
