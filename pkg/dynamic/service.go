@@ -51,7 +51,7 @@ func parseDynamicField(t reflect.StructField) (f dynamicField, err error) {
 		so := []reflect.StructField{}
 		for i := 0; i < no; i++ {
 			to := ft.Out(i)
-			if i == no || to.AssignableTo(errorType) {
+			if ((i + 1) == no) && to.AssignableTo(errorType) {
 				f.returnError = true
 				continue
 			}
