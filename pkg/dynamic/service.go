@@ -43,9 +43,7 @@ func parseDynamicField(t reflect.StructField) (f dynamicField, err error) {
 			Tag:  reflect.StructTag(fmt.Sprintf(`thrift:"%v"`, id)),
 		})
 	}
-	if len(si) != 0 {
-		f.args = NewTStruct(reflect.StructOf(si))
-	}
+	f.args = NewTStruct(reflect.StructOf(si))
 	no := ft.NumOut()
 	if no != 0 {
 		so := []reflect.StructField{}
@@ -64,9 +62,7 @@ func parseDynamicField(t reflect.StructField) (f dynamicField, err error) {
 				Tag:  reflect.StructTag(fmt.Sprintf(`thrift:"%v"`, id)),
 			})
 		}
-		if len(so) != 0 {
-			f.result = NewTStruct(reflect.StructOf(so))
-		}
+		f.result = NewTStruct(reflect.StructOf(so))
 	}
 	return
 }
