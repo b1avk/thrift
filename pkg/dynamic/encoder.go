@@ -348,7 +348,7 @@ func parseFieldTag(tag string) (f fieldTag, err error) {
 		}
 	}
 	sort.Strings(f.contains)
-	f.optional = f.contain("optional")
+	f.optional = !f.contain("required")
 	return
 }
 
@@ -363,7 +363,7 @@ func (t *fieldTag) nextIsList() bool {
 		t.nextListIndex++
 		return t.nextList[index]
 	}
-	return false
+	return true
 }
 
 type fieldEncoder struct {
@@ -480,7 +480,7 @@ func (e *structEncoder) Decode(v reflect.Value, p thrift.TProtocol) (err error) 
 				return
 			}
 		}
-		err = p.ReadFieldEnd()
+		err = p.ReadStructEnd()
 	}
 	return
 }
