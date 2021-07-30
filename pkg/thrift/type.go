@@ -18,8 +18,8 @@ const (
 	STRING
 	STRUCT
 	MAP
-	LIST
 	SET
+	LIST
 )
 
 // TMessageType type of message used in TMessageHeader.
