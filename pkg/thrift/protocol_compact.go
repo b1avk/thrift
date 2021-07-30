@@ -70,6 +70,7 @@ var compactTypeToTType = map[compactType]TType{
 	compactStop:         STOP,
 	compactBooleanFalse: BOOL,
 	compactBooleanTrue:  BOOL,
+	compactByte:         BYTE,
 	compactI16:          I16,
 	compactI32:          I32,
 	compactI64:          I64,
@@ -160,9 +161,11 @@ func (p *tCompactProtocol) WriteFieldStop() error {
 }
 
 func (p *tCompactProtocol) WriteMapBegin(h TMapHeader) (err error) {
-	if err = p.WriteByte(h.Key); err == nil {
-		if err = p.WriteByte(h.Value); err == nil {
-			err = p.writeSize(h.Size)
+	if h.Size == 0 {
+		err = p.WriteByte(0)
+	} else {
+		if err = p.writeSize(h.Size); err == nil {
+			err = p.WriteByte((tTypeToCompactType[h.Key] << 4) | tTypeToCompactType[h.Value])
 		}
 	}
 	return
@@ -173,8 +176,12 @@ func (p *tCompactProtocol) WriteMapEnd() error {
 }
 
 func (p *tCompactProtocol) WriteSetBegin(h TSetHeader) (err error) {
-	if err = p.WriteByte(h.Element); err == nil {
-		err = p.writeSize(h.Size)
+	if h.Size <= 14 {
+		err = p.WriteByte(byte(int32(h.Size<<4) | int32(tTypeToCompactType[h.Element])))
+	} else {
+		if err = p.WriteByte(0xf0 | byte(tTypeToCompactType[h.Element])); err == nil {
+			err = p.writeSize(h.Size)
+		}
 	}
 	return
 }
@@ -345,10 +352,26 @@ func (p *tCompactProtocol) ReadFieldEnd() error {
 }
 
 func (p *tCompactProtocol) ReadMapBegin() (h TMapHeader, err error) {
-	if h.Key, err = p.ReadByte(); err == nil {
-		if h.Value, err = p.ReadByte(); err == nil {
-			h.Size, err = p.readSize()
+	if h.Size, err = p.readSize(); err != nil {
+		return
+	}
+	if err = p.cfg.CheckSizeForProtocol(h.Size); err != nil {
+		return
+	}
+	var kvt byte
+	if h.Size != 0 {
+		if kvt, err = p.ReadByte(); err != nil {
+			return
 		}
+	}
+	var ok bool
+	h.Key, ok = compactTypeToTType[(kvt >> 4)]
+	if !ok {
+		err = NewTProtocolException(TProtocolErrorInvalidData, fmt.Sprintf("unexpected compact Type: %d", kvt>>4))
+	}
+	h.Value, ok = compactTypeToTType[(kvt & 0x0f)]
+	if !ok {
+		err = NewTProtocolException(TProtocolErrorInvalidData, fmt.Sprintf("unexpected compact Type: %d", kvt&0x0f))
 	}
 	return
 }
@@ -358,8 +381,23 @@ func (p *tCompactProtocol) ReadMapEnd() error {
 }
 
 func (p *tCompactProtocol) ReadSetBegin() (h TSetHeader, err error) {
-	if h.Element, err = p.ReadByte(); err == nil {
-		h.Size, err = p.readSize()
+	var b byte
+	if b, err = p.ReadByte(); err != nil {
+		return
+	}
+	h.Size = int((b >> 4) & 0x0f)
+	if h.Size == 15 {
+		if h.Size, err = p.readSize(); err != nil {
+			return
+		}
+	}
+	if err = p.cfg.CheckSizeForProtocol(h.Size); err != nil {
+		return
+	}
+	var ok bool
+	h.Element, ok = compactTypeToTType[(b & 0x0f)]
+	if !ok {
+		err = NewTProtocolException(TProtocolErrorInvalidData, fmt.Sprintf("unexpected compact Type: %d", b))
 	}
 	return
 }
@@ -369,8 +407,23 @@ func (p *tCompactProtocol) ReadSetEnd() error {
 }
 
 func (p *tCompactProtocol) ReadListBegin() (h TListHeader, err error) {
-	if h.Element, err = p.ReadByte(); err == nil {
-		h.Size, err = p.readSize()
+	var b byte
+	if b, err = p.ReadByte(); err != nil {
+		return
+	}
+	h.Size = int((b >> 4) & 0x0f)
+	if h.Size == 15 {
+		if h.Size, err = p.readSize(); err != nil {
+			return
+		}
+	}
+	if err = p.cfg.CheckSizeForProtocol(h.Size); err != nil {
+		return
+	}
+	var ok bool
+	h.Element, ok = compactTypeToTType[(b & 0x0f)]
+	if !ok {
+		err = NewTProtocolException(TProtocolErrorInvalidData, fmt.Sprintf("unexpected compact Type: %d", b))
 	}
 	return
 }
